@@ -40,11 +40,12 @@ io.on('connection', (socket) => {
     socket.join(`admin:${code}`);
     callback(true);
     socket.emit('sessionState', sessions.getPublicState(code));
+    socket.emit('characterList', sessions.getAvailableCharacters(code));
   });
 
   // ─── PARTICIPANT ────────────────────────────────────
   socket.on('joinRoom', (code: string, characterId: string, callback: (ok: boolean, reason?: string) => void) => {
-    const result = sessions.addParticipant(code, characterId);
+    const result = sessions.addParticipant(code, characterId, socket.id);
     if (!result.success) {
       return callback(false, result.reason);
     }
@@ -74,7 +75,7 @@ io.on('connection', (socket) => {
     // Combo detection
     const combo = sessions.checkCombo(currentCode, emoji);
     if (combo) {
-      io.to(`room:${currentCode}`).emit('comboEvent', combo.emoji, combo.count);
+      io.to(`room:${currentCode}`).emit('comboEvent', combo);
     }
   });
 
@@ -88,18 +89,19 @@ io.on('connection', (socket) => {
   socket.on('startSession', () => {
     if (!isAdmin || !currentCode) return;
     sessions.setStatus(currentCode, 'active');
-    io.to(`room:${currentCode}`).emit('sessionStatus', 'active');
+    io.to(`room:${currentCode}`).emit('sessionStatus', { status: 'active' });
   });
 
   socket.on('endSession', () => {
     if (!isAdmin || !currentCode) return;
     sessions.setStatus(currentCode, 'ended');
-    io.to(`room:${currentCode}`).emit('sessionStatus', 'ended');
+    io.to(`room:${currentCode}`).emit('sessionStatus', { status: 'ended' });
   });
 
   socket.on('resetCharacters', () => {
     if (!isAdmin || !currentCode) return;
     sessions.resetCharacters(currentCode);
+    io.to(`room:${currentCode}`).emit('characterList', sessions.getAvailableCharacters(currentCode));
     io.to(`room:${currentCode}`).emit('charactersReset');
   });
 
@@ -109,8 +111,9 @@ io.on('connection', (socket) => {
     sessions.resetCharacters(currentCode);
     sessions.setStatus(currentCode, 'active');
     io.to(`room:${currentCode}`).emit('sessionCleared');
+    io.to(`room:${currentCode}`).emit('characterList', sessions.getAvailableCharacters(currentCode));
     io.to(`room:${currentCode}`).emit('charactersReset');
-    io.to(`room:${currentCode}`).emit('sessionStatus', 'active');
+    io.to(`room:${currentCode}`).emit('sessionStatus', { status: 'active' });
   });
 
   socket.on('kickParticipant', (characterId: string) => {
