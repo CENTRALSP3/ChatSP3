@@ -27,7 +27,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [characters, setCharacters] = useState<Character[]>([]);
 
   useEffect(() => {
-    const sock = io();
+    const sock = io(import.meta.env.VITE_BACKEND_URL || 'https://backend-5xftxzs46-price3.vercel.app');
     s.current = sock;
 
     sock.on('connect', () => setConnected(true));
